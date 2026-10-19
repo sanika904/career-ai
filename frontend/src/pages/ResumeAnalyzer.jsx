@@ -25,18 +25,25 @@ function ResumeAnalyzer() {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [resumeText, setResumeText] = useState("");
   const [analysis, setAnalysis] = useState(null);
+  
   const [error, setError] = useState("");
 
   const handleFileChange = (event) => {
-    const file = event.target.files[0];
+    const file = event.target.files?.[0];
 
-    if (file) {
-      setSelectedFile(file);
-      setAnalysisComplete(false);
-      setResumeText("");
-      setAnalysis(null);
-      setError("");
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      setError("Please upload a PDF file.");
+      setSelectedFile(null);
+      return;
     }
+
+    setSelectedFile(file);
+    setAnalysisComplete(false);
+    setResumeText("");
+    setAnalysis(null);
+    setError("");
   };
 
   const removeFile = () => {
@@ -48,7 +55,18 @@ function ResumeAnalyzer() {
   };
 
   const analyzeResume = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      setError("Please select your resume first.");
+      return;
+    }
+
+    // Read the token inside the function.
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setError("Your login session was not found. Please log in again.");
+      return;
+    }
 
     setIsAnalyzing(true);
     setAnalysisComplete(false);
@@ -62,6 +80,9 @@ function ResumeAnalyzer() {
         "http://localhost:5000/api/resume/upload",
         {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
           body: formData,
         }
       );
@@ -69,19 +90,37 @@ function ResumeAnalyzer() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to analyze resume");
+        throw new Error(
+          data.message ||
+          data.detail ||
+          `Resume analysis failed (${response.status})`
+        );
       }
 
-      setResumeText(data.text);
-      localStorage.setItem("careerAI_resumeText", data.text);
-      setAnalysis(data.analysis);
-      setAnalysisComplete(true);
-    } catch (error) {
-      console.error("Resume analysis error:", error);
+      if (!data.analysis) {
+        throw new Error("The server did not return resume analysis.");
+      }
 
-      setError(
-        "Unable to analyze resume. Please make sure the backend is running."
+      setResumeText(data.text || "");
+      localStorage.setItem(
+        "careerAI_resumeText",
+        data.text || ""
       );
+
+      setAnalysis(data.analysis);
+      
+      localStorage.setItem(
+      "careerAI_resume_analysis",
+      JSON.stringify(data.analysis)
+     );
+
+     localStorage.removeItem("careerAI_roadmap_progress");
+
+      setAnalysisComplete(true);
+    } catch (err) {
+      console.error("Resume analysis error:", err);
+
+      setError(err.message || "An error occurred during resume analysis.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -89,17 +128,14 @@ function ResumeAnalyzer() {
 
   return (
     <div className="flex min-h-screen bg-[#090014] text-white">
-      {/* Sidebar */}
       <div className="hidden lg:block">
         <Sidebar />
       </div>
 
-      {/* Main Area */}
       <div className="min-w-0 flex-1">
         <Navbar />
 
         <main className="px-5 py-7 sm:px-8">
-          {/* Back Button */}
           <button
             onClick={() => navigate("/")}
             className="mb-6 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/60 transition hover:border-purple-500/30 hover:bg-purple-500/10 hover:text-white"
@@ -108,11 +144,9 @@ function ResumeAnalyzer() {
             Back to Dashboard
           </button>
 
-          {/* Page Header */}
           <div className="mb-7">
             <div className="mb-3 flex items-center gap-2 text-purple-400">
               <Sparkles size={20} />
-
               <span className="text-sm font-medium">
                 AI Career Intelligence
               </span>
@@ -128,7 +162,6 @@ function ResumeAnalyzer() {
             </p>
           </div>
 
-          {/* Upload Section */}
           <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
               <div className="mb-5 flex items-center gap-3">
@@ -140,7 +173,6 @@ function ResumeAnalyzer() {
                   <h2 className="text-lg font-semibold">
                     Upload Resume
                   </h2>
-
                   <p className="text-xs text-white/40">
                     PDF format recommended
                   </p>
@@ -163,7 +195,7 @@ function ResumeAnalyzer() {
 
                   <input
                     type="file"
-                    accept=".pdf"
+                    accept=".pdf,application/pdf"
                     onChange={handleFileChange}
                     className="hidden"
                   />
@@ -180,7 +212,6 @@ function ResumeAnalyzer() {
                         <p className="text-sm font-medium">
                           {selectedFile.name}
                         </p>
-
                         <p className="mt-1 text-xs text-white/35">
                           {(selectedFile.size / 1024).toFixed(1)} KB
                         </p>
@@ -188,14 +219,18 @@ function ResumeAnalyzer() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={removeFile}
-                      className="rounded-lg p-2 text-white/40 transition hover:bg-white/5 hover:text-white"
+                      disabled={isAnalyzing}
+                      aria-label="Remove selected resume"
+                      className="rounded-lg p-2 text-white/40 transition hover:bg-white/5 hover:text-white disabled:opacity-50"
                     >
                       <X size={18} />
                     </button>
                   </div>
 
                   <button
+                    type="button"
                     onClick={analyzeResume}
                     disabled={isAnalyzing}
                     className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-3 text-sm font-semibold transition hover:from-purple-500 hover:to-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
@@ -224,13 +259,11 @@ function ResumeAnalyzer() {
                     size={18}
                     className="mt-0.5 shrink-0"
                   />
-
                   <p>{error}</p>
                 </div>
               )}
             </div>
 
-            {/* AI Features */}
             <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-900/20 to-blue-900/10 p-6">
               <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400">
                 <Sparkles size={20} />
@@ -249,10 +282,8 @@ function ResumeAnalyzer() {
             </div>
           </div>
 
-          {/* Results */}
           {analysisComplete && analysis && (
             <div className="mt-7">
-              {/* Result Header */}
               <div className="mb-5 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
                   <CheckCircle2 size={20} />
@@ -262,27 +293,23 @@ function ResumeAnalyzer() {
                   <p className="text-xs font-medium uppercase tracking-wider text-emerald-400">
                     Resume Processed
                   </p>
-
                   <h2 className="mt-1 text-xl font-semibold">
                     AI Analysis Complete
                   </h2>
                 </div>
               </div>
 
-              {/* Scores */}
               <div className="grid gap-4 md:grid-cols-3">
                 <ScoreCard
                   title="Resume Score"
                   value={analysis.resumeScore}
                   icon={TrendingUp}
                 />
-
                 <ScoreCard
                   title="ATS Score"
                   value={analysis.atsScore}
                   icon={Target}
                 />
-
                 <ScoreCard
                   title="Skills Match"
                   value={analysis.skillsMatch}
@@ -290,7 +317,6 @@ function ResumeAnalyzer() {
                 />
               </div>
 
-              {/* Strengths + Weaknesses */}
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <InsightCard
                   title="Three Strengths"
@@ -298,7 +324,6 @@ function ResumeAnalyzer() {
                   iconClass="text-emerald-400"
                   items={analysis.strengths}
                 />
-
                 <InsightCard
                   title="Three Weaknesses"
                   icon={AlertCircle}
@@ -307,7 +332,6 @@ function ResumeAnalyzer() {
                 />
               </div>
 
-              {/* Suggestions */}
               <div className="mt-6 rounded-2xl border border-purple-500/20 bg-white/[0.03] p-6">
                 <div className="mb-5 flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400">
@@ -318,7 +342,6 @@ function ResumeAnalyzer() {
                     <p className="text-xs uppercase tracking-wider text-purple-400">
                       AI Recommendations
                     </p>
-
                     <h3 className="mt-1 text-lg font-semibold">
                       Improvement Suggestions
                     </h3>
@@ -326,7 +349,10 @@ function ResumeAnalyzer() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  {analysis.suggestions.map((suggestion, index) => (
+                  {(Array.isArray(analysis.suggestions)
+                    ? analysis.suggestions
+                    : []
+                  ).map((suggestion, index) => (
                     <Suggestion
                       key={index}
                       number={`0${index + 1}`}
@@ -336,7 +362,6 @@ function ResumeAnalyzer() {
                 </div>
               </div>
 
-              {/* Overall Recommendation */}
               <div className="mt-6 rounded-2xl border border-purple-500/20 bg-gradient-to-r from-purple-900/20 to-blue-900/10 p-6">
                 <div className="flex items-start gap-4">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400">
@@ -347,7 +372,6 @@ function ResumeAnalyzer() {
                     <p className="text-xs uppercase tracking-wider text-purple-400">
                       Overall Recommendation
                     </p>
-
                     <p className="mt-2 text-sm leading-6 text-white/60">
                       {analysis.recommendation}
                     </p>
@@ -355,11 +379,9 @@ function ResumeAnalyzer() {
                 </div>
               </div>
 
-              {/* Extracted Resume */}
               <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
                 <div className="mb-4 flex items-center gap-3">
                   <FileText size={19} className="text-white/50" />
-
                   <h3 className="text-sm font-semibold">
                     Extracted Resume Content
                   </h3>
@@ -377,7 +399,6 @@ function ResumeAnalyzer() {
   );
 }
 
-/* Info Item */
 function InfoItem({ text }) {
   return (
     <div className="flex gap-3">
@@ -385,22 +406,21 @@ function InfoItem({ text }) {
         size={18}
         className="mt-0.5 shrink-0 text-purple-400"
       />
-
-      <p className="text-sm leading-5 text-white/55">
-        {text}
-      </p>
+      <p className="text-sm leading-5 text-white/55">{text}</p>
     </div>
   );
 }
 
-/* Score Card */
 function ScoreCard({ title, value, icon: Icon }) {
+  const numericValue = Number(value);
+  const score = Number.isFinite(numericValue) ? numericValue : 0;
+
   const scoreLabel =
-    value >= 85
+    score >= 85
       ? "Excellent"
-      : value >= 70
+      : score >= 70
       ? "Very Good"
-      : value >= 55
+      : score >= 55
       ? "Good"
       : "Needs Improvement";
 
@@ -410,48 +430,33 @@ function ScoreCard({ title, value, icon: Icon }) {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400">
           <Icon size={19} />
         </div>
-
-        <span className="text-xs text-emerald-400">
-          {scoreLabel}
-        </span>
+        <span className="text-xs text-emerald-400">{scoreLabel}</span>
       </div>
 
-      <p className="mt-5 text-sm text-white/40">
-        {title}
-      </p>
+      <p className="mt-5 text-sm text-white/40">{title}</p>
 
       <div className="mt-1 flex items-end gap-1">
-        <h3 className="text-4xl font-bold">{value}</h3>
-
-        <span className="mb-1 text-sm text-white/30">
-          /100
-        </span>
+        <h3 className="text-4xl font-bold">{score}</h3>
+        <span className="mb-1 text-sm text-white/30">/100</span>
       </div>
     </div>
   );
 }
 
-/* Insight Card */
-function InsightCard({
-  title,
-  icon: Icon,
-  iconClass,
-  items,
-}) {
+function InsightCard({ title, icon: Icon, iconClass, items }) {
+  const safeItems = Array.isArray(items) ? items : [];
+
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
       <div className="mb-5 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
           <Icon size={19} className={iconClass} />
         </div>
-
-        <h3 className="text-lg font-semibold">
-          {title}
-        </h3>
+        <h3 className="text-lg font-semibold">{title}</h3>
       </div>
 
       <div className="space-y-3">
-        {items.map((item, index) => (
+        {safeItems.map((item, index) => (
           <div
             key={index}
             className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3"
@@ -459,10 +464,7 @@ function InsightCard({
             <span className="mt-0.5 text-xs text-purple-400">
               {index + 1}
             </span>
-
-            <p className="text-sm leading-5 text-white/60">
-              {item}
-            </p>
+            <p className="text-sm leading-5 text-white/60">{item}</p>
           </div>
         ))}
       </div>
@@ -470,17 +472,13 @@ function InsightCard({
   );
 }
 
-/* Suggestion */
 function Suggestion({ number, title }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 p-4">
       <span className="text-xs font-semibold text-purple-400">
         {number}
       </span>
-
-      <h4 className="mt-3 text-sm font-semibold leading-5">
-        {title}
-      </h4>
+      <h4 className="mt-3 text-sm font-semibold leading-5">{title}</h4>
     </div>
   );
 }

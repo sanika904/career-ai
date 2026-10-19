@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
+import React from "react";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import StatCard from "./components/StatCard";
@@ -9,6 +9,14 @@ import JobMatcher from "./pages/JobMatcher";
 import MockInterview from "./pages/MockInterview";
 import CareerRoadmap from "./pages/CareerRoadmap";
 import SkillAnalyzer from "./pages/SkillAnalyzer";
+import Applications from "./pages/Applications";
+
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import { ThemeContext } from "./context/ThemeContext";
+
 import {
   FileText,
   Gauge,
@@ -20,29 +28,109 @@ import {
 } from "lucide-react";
 
 function Dashboard() {
-  const performanceData = [
-    { month: "Jan", score: 52 },
-    { month: "Feb", score: 58 },
-    { month: "Mar", score: 61 },
-    { month: "Apr", score: 68 },
-    { month: "May", score: 74 },
-    { month: "Jun", score: 82 },
-  ];
+  const [userName, setUserName] = React.useState("");
+  const [resumeScore, setResumeScore] = React.useState(0);
+  const [atsScore, setAtsScore] = React.useState(0);
+  const [skillScore, setSkillScore] = React.useState(0);
+  const [skillCount, setSkillCount] = React.useState(0);
+  const [interviewScore, setInterviewScore] = React.useState(0);
+
+  // Logged-in user's name
+  React.useEffect(() => {
+    // 1. Show the saved user name immediately (saved at login)
+    try {
+      const stored = JSON.parse(localStorage.getItem("user") || "null");
+      if (stored?.name) setUserName(stored.name);
+    } catch {
+      // ignore invalid saved data
+    }
+
+    // 2. Load the latest name from the backend
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const loadUser = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await response.json();
+        const name = data?.user?.name || data?.name;
+
+        if (response.ok && name) {
+          setUserName(name);
+          localStorage.setItem(
+            "user",
+            JSON.stringify({ ...(data.user || data), name })
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load user:", error);
+      }
+    };
+
+    loadUser();
+  }, []);
+
+  // Scores saved by the other pages
+  React.useEffect(() => {
+    const savedAnalysis =
+      localStorage.getItem("careerAI_resume_analysis") ||
+      localStorage.getItem("resumeAnalysis");
+    const savedSkillScore = localStorage.getItem("careerAI_skillScore");
+    const savedSkillCount = localStorage.getItem("careerAI_skillCount");
+    const savedInterviewScore = localStorage.getItem(
+      "careerAI_interviewScore"
+    );
+
+    if (savedSkillScore !== null) {
+      setSkillScore(Number(savedSkillScore) || 0);
+    }
+
+    if (savedSkillCount !== null) {
+      setSkillCount(Number(savedSkillCount) || 0);
+    }
+
+    if (savedInterviewScore !== null) {
+      setInterviewScore(Number(savedInterviewScore) || 0);
+    }
+
+    if (savedAnalysis) {
+      try {
+        const result = JSON.parse(savedAnalysis);
+        const analysis = result.analysis || result;
+
+        setResumeScore(Number(analysis.resumeScore) || 0);
+        setAtsScore(Number(analysis.atsScore) || 0);
+      } catch (error) {
+        console.error("Unable to load resume analysis:", error);
+      }
+    }
+  }, []);
+
+  const firstName = userName ? userName.trim().split(" ")[0] : "there";
+
+  const currentCareerScore = Math.round(
+    (resumeScore + skillScore + interviewScore + 70) / 4
+  );
+
+  const performanceData = [{ month: "Current", score: currentCareerScore }];
 
   const readinessData = [
     {
       name: "Resume",
-      score: 82,
+      score: resumeScore,
       color: "from-purple-500 to-blue-500",
     },
     {
       name: "Skills",
-      score: 76,
+      score: skillScore,
       color: "from-blue-500 to-cyan-400",
     },
     {
       name: "Interview",
-      score: 68,
+      score: interviewScore,
       color: "from-emerald-400 to-green-400",
     },
     {
@@ -55,28 +143,24 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-[#090014] text-white">
       <div className="flex min-h-screen">
-
         {/* Sidebar */}
         <Sidebar />
 
         {/* Main Content */}
         <main className="min-w-0 flex-1">
-
           {/* Navbar */}
           <Navbar />
 
           <div className="px-7 py-7">
-
             {/* Welcome */}
             <div className="mb-7 flex items-end justify-between">
-
               <div>
                 <p className="text-sm font-semibold tracking-[0.22em] text-purple-400">
                   CAREERAI DASHBOARD
                 </p>
 
                 <h1 className="mt-2 text-3xl font-bold">
-                  Welcome back, Sanika! 👋
+                  Welcome back, {firstName}! 👋
                 </h1>
 
                 <p className="mt-2 text-sm text-white/45">
@@ -90,23 +174,21 @@ function Dashboard() {
                 AI Career Insights
                 <ArrowUpRight size={15} />
               </button>
-
             </div>
 
             {/* Stat Cards */}
             <section className="grid grid-cols-4 gap-4">
-
               <StatCard
                 title="Resume Score"
-                value="82%"
-                change="+8.4%"
+                value={`${resumeScore}%`}
+                change="AI Analyzed"
                 icon={FileText}
               />
 
               <StatCard
                 title="ATS Score"
-                value="88%"
-                change="+5.2%"
+                value={`${atsScore}%`}
+                change="AI Analyzed"
                 icon={Gauge}
               />
 
@@ -119,21 +201,17 @@ function Dashboard() {
 
               <StatCard
                 title="Skills"
-                value="12"
-                change="+3 new"
+                value={skillCount}
+                change={`${skillScore}% score`}
                 icon={Sparkles}
               />
-
             </section>
 
             {/* Analytics */}
             <div className="mt-5 grid grid-cols-[1.55fr_1fr] gap-5">
-
               {/* Career Performance */}
               <div className="rounded-2xl border border-purple-500/30 bg-[#10081b] p-7">
-
                 <div className="flex items-start justify-between">
-
                   <div>
                     <h2 className="text-2xl font-semibold">
                       Career Performance
@@ -145,21 +223,17 @@ function Dashboard() {
                   </div>
 
                   <div className="flex items-center gap-2 rounded-xl bg-purple-500/10 px-4 py-3">
-                    <TrendingUp
-                      size={16}
-                      className="text-purple-400"
-                    />
+                    <TrendingUp size={16} className="text-purple-400" />
 
                     <span className="text-sm font-semibold text-purple-300">
                       +30%
                     </span>
                   </div>
-
                 </div>
 
                 <div className="mt-7 flex items-end gap-3">
                   <span className="text-4xl font-bold">
-                    82%
+                    {currentCareerScore}%
                   </span>
 
                   <span className="mb-1 text-sm text-emerald-400">
@@ -169,9 +243,7 @@ function Dashboard() {
 
                 {/* Chart */}
                 <div className="mt-7">
-
                   <div className="relative h-64">
-
                     <div className="absolute inset-0 flex flex-col justify-between">
                       <div className="border-t border-white/5" />
                       <div className="border-t border-white/5" />
@@ -181,7 +253,6 @@ function Dashboard() {
                     </div>
 
                     <div className="absolute inset-0 flex items-end justify-between px-5">
-
                       {performanceData.map((item) => (
                         <div
                           key={item.month}
@@ -195,13 +266,10 @@ function Dashboard() {
                           />
                         </div>
                       ))}
-
                     </div>
-
                   </div>
 
                   <div className="mt-3 flex justify-between px-5">
-
                     {performanceData.map((item) => (
                       <span
                         key={item.month}
@@ -210,45 +278,34 @@ function Dashboard() {
                         {item.month}
                       </span>
                     ))}
-
                   </div>
-
                 </div>
 
                 {/* Bottom Scores */}
                 <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
-
                   <div>
-                    <p className="text-sm text-white/35">
-                      Starting Score
-                    </p>
+                    <p className="text-sm text-white/35">Starting Score</p>
 
                     <p className="mt-2 text-lg font-semibold">
-                      52%
+                      {currentCareerScore}%
                     </p>
                   </div>
 
                   <div className="h-9 w-px bg-white/10" />
 
                   <div className="text-right">
-                    <p className="text-sm text-white/35">
-                      Current Score
-                    </p>
+                    <p className="text-sm text-white/35">Current Score</p>
 
                     <p className="mt-2 text-lg font-semibold text-purple-300">
-                      82%
+                      {currentCareerScore}%
                     </p>
                   </div>
-
                 </div>
-
               </div>
 
               {/* Placement Readiness */}
               <div className="rounded-2xl border border-white/10 bg-[#10081b] p-7">
-
                 <div className="flex items-center justify-between">
-
                   <div>
                     <h2 className="text-2xl font-semibold">
                       Placement Readiness
@@ -259,51 +316,39 @@ function Dashboard() {
                     </p>
                   </div>
 
-                  <MoreHorizontal
-                    size={22}
-                    className="text-white/40"
-                  />
-
+                  <MoreHorizontal size={22} className="text-white/40" />
                 </div>
 
                 {/* Circle */}
                 <div className="mt-7 flex justify-center">
-
                   <div
                     className="relative flex h-40 w-40 items-center justify-center rounded-full"
                     style={{
-                      background:
-                        "conic-gradient(#a855f7 0deg 280deg, #241832 280deg 360deg)",
+                      background: `conic-gradient(#a855f7 0deg ${
+                        currentCareerScore * 3.6
+                      }deg, #241832 ${currentCareerScore * 3.6}deg 360deg)`,
                     }}
                   >
-
                     <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-[#10081b]">
-
                       <span className="text-4xl font-bold">
-                        78%
+                        {currentCareerScore}%
                       </span>
 
                       <span className="mt-1 text-sm text-white/45">
                         Overall Readiness
                       </span>
-
                     </div>
-
                   </div>
-
                 </div>
 
                 {/* Progress */}
                 <div className="mt-7 space-y-4">
-
                   {readinessData.map((item) => (
                     <div
                       key={item.name}
                       className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
                     >
-
                       <div className="flex items-center justify-between">
-
                         <span className="text-sm text-white/70">
                           {item.name}
                         </span>
@@ -311,28 +356,22 @@ function Dashboard() {
                         <span className="text-sm font-semibold">
                           {item.score}%
                         </span>
-
                       </div>
 
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/5">
-
                         <div
                           className={`h-full rounded-full bg-gradient-to-r ${item.color}`}
                           style={{
                             width: `${item.score}%`,
                           }}
                         />
-
                       </div>
-
                     </div>
                   ))}
-
                 </div>
 
                 {/* Message */}
                 <div className="mt-5 rounded-xl border border-purple-500/20 bg-purple-500/5 p-5">
-
                   <h3 className="font-semibold">
                     You're almost placement-ready! 🚀
                   </h3>
@@ -341,70 +380,39 @@ function Dashboard() {
                     Improve your interview skills and add one more
                     project to increase your readiness score.
                   </p>
-
                 </div>
-
               </div>
-
             </div>
 
             {/* AI Career Tools */}
             <AICareerTools />
-
           </div>
-
         </main>
-
       </div>
     </div>
   );
 }
 
 function App() {
+  const [darkMode, setDarkMode] = React.useState(true);
+
   return (
     <BrowserRouter>
-      <Routes>
-
-        {/* Dashboard */}
-        <Route path="/" element={<Dashboard />} />
-
-        {/* Resume Analyzer */}
-        <Route
-          path="/resume-analyzer"
-          element={<ResumeAnalyzer />}
-        />
-
-        <Route
-          path="/job-matcher"
-          element={<JobMatcher />}
-        />
-
-        <Route
-          path="/mock-interview"
-          element={<MockInterview />}
-        />
-
-        <Route
-          path="/career-roadmap"
-          element={<CareerRoadmap />}
-        />
-
-        <Route
-          path="/skill-analyzer"
-          element={<SkillAnalyzer />}
-        />
-
-        {/*<Route
-          path="/applications"
-          element={<Applications />}
-        />
-
-        <Route
-          path="/profile"
-          element={<Profile />}
-        /> */}
-
-      </Routes>
+      <ThemeContext.Provider value={{ darkMode, setDarkMode }}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/resume-analyzer" element={<ResumeAnalyzer />} />
+          <Route path="/job-matcher" element={<JobMatcher />} />
+          <Route path="/mock-interview" element={<MockInterview />} />
+          <Route path="/career-roadmap" element={<CareerRoadmap />} />
+          <Route path="/skill-analyzer" element={<SkillAnalyzer />} />
+          <Route path="/applications" element={<Applications />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </ThemeContext.Provider>
     </BrowserRouter>
   );
 }

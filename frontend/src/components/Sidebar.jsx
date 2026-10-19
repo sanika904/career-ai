@@ -49,12 +49,12 @@ function Sidebar() {
     {
       name: "Applications",
       icon: Briefcase,
-      //path: "/applications",
+      path: "/applications",
     },
     {
       name: "Profile",
       icon: UserRound,
-     // path: "/profile",
+      path: "/profile",
     },
   ];
 
@@ -125,7 +125,10 @@ function Sidebar() {
         </div>
 
         {/* Settings */}
-        <button className="mt-3 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-white/60 transition hover:bg-white/5 hover:text-white">
+        <button 
+        onClick={() => navigate("/settings")}
+        className="mt-3 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-white/60 transition hover:bg-white/5 hover:text-white"
+        >
           <Settings size={19} />
 
           <span>Settings</span>

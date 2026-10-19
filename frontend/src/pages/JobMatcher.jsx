@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Search,
   Target,
@@ -10,6 +11,15 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
 function JobMatcher() {
+
+  
+const bestMatch = 92;
+
+React.useEffect(() => {
+  localStorage.setItem("careerAI_jobMatch", bestMatch);
+}, []);
+
+
   const jobs = [
     {
       title: "Frontend Developer",

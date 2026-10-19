@@ -1,4 +1,5 @@
 import { useState } from "react";
+import React from "react";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -11,50 +12,86 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
 function SkillAnalyzer() {
-  const [targetRole, setTargetRole] = useState("Full Stack Developer");
+const [targetRole, setTargetRole] = useState("Full Stack Developer");
 
-  const skills = [
-    {
-      name: "JavaScript",
-      level: "Advanced",
-      score: 88,
-      status: "Strong",
-    },
-    {
-      name: "React.js",
-      level: "Intermediate",
-      score: 76,
-      status: "Good",
-    },
-    {
-      name: "Node.js",
-      level: "Intermediate",
-      score: 72,
-      status: "Good",
-    },
-    {
-      name: "MongoDB",
-      level: "Intermediate",
-      score: 68,
-      status: "Needs Improvement",
-    },
-    {
-      name: "SQL",
-      level: "Beginner",
-      score: 54,
-      status: "Needs Improvement",
-    },
-    {
-      name: "Git & GitHub",
-      level: "Intermediate",
-      score: 74,
-      status: "Good",
-    },
-  ];
+const [skills, setSkills] = useState([]);
+const [strengths, setStrengths] = useState([]);
+const [improvements, setImprovements] = useState([]);
 
-  const strengths = ["JavaScript", "React.js", "Git & GitHub"];
+const [overallSkillScore, setOverallSkillScore] = useState(0);
+const [skillLoading, setSkillLoading] = useState(false);
+const [skillError, setSkillError] = useState("");
 
-  const improvements = ["SQL", "MongoDB", "Node.js"];
+const analyzeSkills = async () => {
+  const resumeText = localStorage.getItem("careerAI_resumeText");
+
+  if (!resumeText) {
+    setSkillError("Please upload your resume in Resume Analyzer first.");
+    setSkills([]);
+    setStrengths([]);
+    setImprovements([]);
+    setOverallSkillScore(0);
+    return;
+  }
+
+  setSkillLoading(true);
+  setSkillError("");
+
+  try {
+    const response = await fetch("http://localhost:5000/api/skills/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        target_role: targetRole,
+      }),
+    });
+
+    const data = await response.json();
+    console.log("AI SKILL ANALYSIS:", data);
+    console.log("EXTRACTED SKILLS:", data.analysis?.skills);
+
+    if (!response.ok) {
+      throw new Error(data.message || "Skill analysis failed");
+    }
+
+    const analysis = data.analysis;
+
+    setSkills(Array.isArray(analysis.skills) ? analysis.skills : []);
+    setStrengths(Array.isArray(analysis.strengths) ? analysis.strengths : []);
+    setImprovements(
+      Array.isArray(analysis.improvements) ? analysis.improvements : []
+    );
+    setOverallSkillScore(Number(analysis.overallSkillScore) || 0);
+
+    localStorage.setItem(
+      "careerAI_skillScore",
+      String(Number(analysis.overallSkillScore) || 0)
+    );
+    localStorage.setItem(
+      "careerAI_skillCount",
+      String(Array.isArray(analysis.skills) ? analysis.skills.length : 0)
+    );
+  } catch (error) {
+    setSkillError(
+      error instanceof Error ? error.message : "Unable to analyze skills"
+    );
+  } finally {
+    setSkillLoading(false);
+  }
+};
+
+React.useEffect(() => {
+  localStorage.setItem("careerAI_skillScore", String(overallSkillScore));
+  localStorage.setItem("careerAI_skillCount", String(skills.length));
+}, [overallSkillScore, skills.length]);
+
+React.useEffect(() => {
+  analyzeSkills();
+}, [targetRole]);
+
 
   return (
     <div className="flex min-h-screen bg-[#090014] text-white">
@@ -124,7 +161,7 @@ function SkillAnalyzer() {
                 <p className="mt-5 text-sm text-white/45">Overall Skill Score</p>
 
                 <div className="mt-1 flex items-end gap-2">
-                  <h2 className="text-4xl font-bold">74%</h2>
+                  <h2 className="text-4xl font-bold">{overallSkillScore}%</h2>
                   <span className="mb-1 text-xs text-emerald-400">
                     Good
                   </span>
@@ -137,7 +174,7 @@ function SkillAnalyzer() {
                 </div>
 
                 <p className="mt-5 text-sm text-white/45">Strong Skills</p>
-                <h2 className="mt-1 text-4xl font-bold">3</h2>
+                <h2 className="mt-1 text-4xl font-bold">{strengths.length}</h2>
                 <p className="mt-2 text-xs text-white/35">
                   Skills above recommended level
                 </p>
@@ -151,7 +188,7 @@ function SkillAnalyzer() {
                 <p className="mt-5 text-sm text-white/45">
                   Skills to Improve
                 </p>
-                <h2 className="mt-1 text-4xl font-bold">3</h2>
+                <h2 className="mt-1 text-4xl font-bold">{improvements.length}</h2>
                 <p className="mt-2 text-xs text-white/35">
                   Skills that need more practice
                 </p>
@@ -176,6 +213,17 @@ function SkillAnalyzer() {
                 </div>
 
                 <div className="space-y-5">
+                  {skillLoading && (
+                    <p className="mb-4 text-sm text-purple-300">
+                      Analyzing your resume skills...
+                    </p>
+                  )}
+
+                  {skillError && (
+                    <p className="mb-4 text-sm text-orange-400">
+                      {skillError}
+                    </p>
+                  )}
                   {skills.map((skill) => (
                     <div key={skill.name}>
                       <div className="mb-2 flex items-center justify-between">
@@ -232,10 +280,13 @@ function SkillAnalyzer() {
                   </div>
 
                   <p className="mt-5 text-sm leading-6 text-white/55">
-                    Your strongest area is JavaScript and frontend
-                    development. To become more placement-ready for a{" "}
-                    {targetRole} role, focus on backend development, databases,
-                    and real-world project experience.
+                     {skills.length > 0
+                      ? `Your resume shows skills in ${skills
+                      .slice(0, 3)
+                      .map((skill) => skill.name)
+                      .join(", ")}. To become more placement-ready for a ${targetRole} role, focus on strengthening your skills marked as "Needs Improvement" and building real-world project experience.`
+                      : `Upload your resume to receive personalized skill insights for a ${targetRole} role.`}
+                      
                   </p>
 
                   <button className="mt-5 w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-3 text-sm font-semibold transition hover:from-purple-500 hover:to-blue-500">

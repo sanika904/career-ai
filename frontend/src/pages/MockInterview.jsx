@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import React from "react";
 import {
   Video,
   Sparkles,
@@ -745,6 +746,13 @@ function InterviewResult({
           ) / evaluations.length
         )
       : 0;
+
+      React.useEffect(() => {
+     localStorage.setItem(
+    "careerAI_interviewScore",
+    String(overallScore)
+    );
+    }, [overallScore]);
 
   const averageTechnical =
     evaluations.length > 0
