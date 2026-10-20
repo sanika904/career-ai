@@ -48,7 +48,7 @@ export default function Profile() {
 
       try {
         const response = await fetch(
-          "http://localhost:5000/api/profile",
+          "https://career-ai-z87n.onrender.com/api/profile",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -102,7 +102,7 @@ export default function Profile() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/profile",
+        "https://career-ai-z87n.onrender.com/api/profile",
         {
           method: "PUT",
           headers: {

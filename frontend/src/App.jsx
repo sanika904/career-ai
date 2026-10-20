@@ -29,8 +29,10 @@ import {
 
 function Dashboard() {
   const [userName, setUserName] = React.useState("");
+  const [hasResume, setHasResume] = React.useState(false);
   const [resumeScore, setResumeScore] = React.useState(0);
   const [atsScore, setAtsScore] = React.useState(0);
+  const [jobMatchScore, setJobMatchScore] = React.useState(0);
   const [skillScore, setSkillScore] = React.useState(0);
   const [skillCount, setSkillCount] = React.useState(0);
   const [interviewScore, setInterviewScore] = React.useState(0);
@@ -51,7 +53,7 @@ function Dashboard() {
 
     const loadUser = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/profile", {
+        const response = await fetch("https://career-ai-z87n.onrender.com/api/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -83,6 +85,9 @@ function Dashboard() {
     const savedInterviewScore = localStorage.getItem(
       "careerAI_interviewScore"
     );
+    const savedJobMatchScore = localStorage.getItem(
+      "careerAI_jobMatchScore"
+    );
 
     if (savedSkillScore !== null) {
       setSkillScore(Number(savedSkillScore) || 0);
@@ -96,6 +101,10 @@ function Dashboard() {
       setInterviewScore(Number(savedInterviewScore) || 0);
     }
 
+    if (savedJobMatchScore !== null) {
+      setJobMatchScore(Number(savedJobMatchScore) || 0);
+    }
+
     if (savedAnalysis) {
       try {
         const result = JSON.parse(savedAnalysis);
@@ -103,6 +112,7 @@ function Dashboard() {
 
         setResumeScore(Number(analysis.resumeScore) || 0);
         setAtsScore(Number(analysis.atsScore) || 0);
+        setHasResume(true);
       } catch (error) {
         console.error("Unable to load resume analysis:", error);
       }
@@ -111,9 +121,14 @@ function Dashboard() {
 
   const firstName = userName ? userName.trim().split(" ")[0] : "there";
 
+  // Projects score is 0 until a resume is analyzed
+  const projectsScore = hasResume ? 70 : 0;
+
   const currentCareerScore = Math.round(
-    (resumeScore + skillScore + interviewScore + 70) / 4
+    (resumeScore + skillScore + interviewScore + projectsScore) / 4
   );
+
+  const hasAnyData = currentCareerScore > 0;
 
   const performanceData = [{ month: "Current", score: currentCareerScore }];
 
@@ -135,7 +150,7 @@ function Dashboard() {
     },
     {
       name: "Projects",
-      score: 70,
+      score: projectsScore,
       color: "from-orange-400 to-yellow-400",
     },
   ];
@@ -181,21 +196,21 @@ function Dashboard() {
               <StatCard
                 title="Resume Score"
                 value={`${resumeScore}%`}
-                change="AI Analyzed"
+                change={hasResume ? "AI Analyzed" : "Upload resume"}
                 icon={FileText}
               />
 
               <StatCard
                 title="ATS Score"
                 value={`${atsScore}%`}
-                change="AI Analyzed"
+                change={hasResume ? "AI Analyzed" : "Upload resume"}
                 icon={Gauge}
               />
 
               <StatCard
                 title="Job Match"
-                value="76%"
-                change="+12.5%"
+                value={`${jobMatchScore}%`}
+                change={jobMatchScore > 0 ? "AI Matched" : "Not analyzed yet"}
                 icon={Target}
               />
 
@@ -222,13 +237,15 @@ function Dashboard() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 rounded-xl bg-purple-500/10 px-4 py-3">
-                    <TrendingUp size={16} className="text-purple-400" />
+                  {hasAnyData && (
+                    <div className="flex items-center gap-2 rounded-xl bg-purple-500/10 px-4 py-3">
+                      <TrendingUp size={16} className="text-purple-400" />
 
-                    <span className="text-sm font-semibold text-purple-300">
-                      +30%
-                    </span>
-                  </div>
+                      <span className="text-sm font-semibold text-purple-300">
+                        {currentCareerScore}%
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-7 flex items-end gap-3">
@@ -373,12 +390,17 @@ function Dashboard() {
                 {/* Message */}
                 <div className="mt-5 rounded-xl border border-purple-500/20 bg-purple-500/5 p-5">
                   <h3 className="font-semibold">
-                    You're almost placement-ready! 🚀
+                    {!hasResume
+                      ? "Let's get started! 🚀"
+                      : currentCareerScore >= 75
+                      ? "You're almost placement-ready! 🚀"
+                      : "You're making progress! 🚀"}
                   </h3>
 
                   <p className="mt-2 text-sm leading-6 text-white/40">
-                    Improve your interview skills and add one more
-                    project to increase your readiness score.
+                    {!hasResume
+                      ? "Upload your resume in the Resume Analyzer to see your scores and get a personalized career roadmap."
+                      : "Improve your interview skills and add one more project to increase your readiness score."}
                   </p>
                 </div>
               </div>

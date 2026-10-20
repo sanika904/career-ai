@@ -77,7 +77,7 @@ function ResumeAnalyzer() {
       formData.append("resume", selectedFile);
 
       const response = await fetch(
-        "http://localhost:5000/api/resume/upload",
+        "https://career-ai-z87n.onrender.com/api/resume/analyze",
         {
           method: "POST",
           headers: {

@@ -44,7 +44,7 @@ export default function Settings() {
 
       try {
         const response = await fetch(
-          "http://localhost:5000/api/settings",
+          "https://career-ai-z87n.onrender.com/api/settings",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -101,7 +101,7 @@ export default function Settings() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/settings",
+        "https://career-ai-z87n.onrender.com/api/settings",
         {
           method: "PUT",
           headers: {
@@ -147,7 +147,7 @@ export default function Settings() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/settings",
+        "https://career-ai-z87n.onrender.com/api/settings",
         {
           method: "PUT",
           headers: {

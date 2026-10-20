@@ -63,7 +63,7 @@ function MockInterview() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/interview/generate-questions",
+        "https://career-ai-z87n.onrender.com/api/interview/generate-questions",
         {
           method: "POST",
           headers: {
@@ -124,7 +124,7 @@ function MockInterview() {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/interview/evaluate",
+        "https://career-ai-z87n.onrender.com/api/interview/evaluate",
         {
           method: "POST",
           headers: {
@@ -195,7 +195,7 @@ function MockInterview() {
 
         try {
           const saveResponse = await fetch(
-            "http://localhost:5000/api/interview/save",
+            "https://career-ai-z87n.onrender.com/api/interview/save",
             {
               method: "POST",
               headers: {

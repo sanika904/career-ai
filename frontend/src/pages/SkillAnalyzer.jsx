@@ -38,7 +38,7 @@ const analyzeSkills = async () => {
   setSkillError("");
 
   try {
-    const response = await fetch("http://localhost:5000/api/skills/analyze", {
+    const response = await fetch("https://career-ai-z87n.onrender.com/api/skills/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
