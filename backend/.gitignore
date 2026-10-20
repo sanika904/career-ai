@@ -16,4 +16,4 @@ __pycache__/
 venv/
 
 # Uploaded files
-uploads/
+uploads
