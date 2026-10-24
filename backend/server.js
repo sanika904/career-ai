@@ -22,7 +22,9 @@ const PORT = process.env.PORT || 5000;
 const PYTHON_API =
   process.env.PYTHON_API || "http://127.0.0.1:8000";
 
-
+// =====================================================
+// MIDDLEWARE
+// =====================================================
 
 // Allow requests from any device / laptop on the network
 app.use(
@@ -47,6 +49,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// =====================================================
+// HELPER: PYTHON API
+// =====================================================
 
 async function callPython(endpoint, body) {
   const response = await fetch(`${PYTHON_API}${endpoint}`, {
@@ -80,7 +85,10 @@ async function callPython(endpoint, body) {
   return data;
 }
 
-
+// =====================================================
+// HELPER: SKILL NAMES
+// Converts ["Java"] or [{ name: "Java" }] into ["Java"]
+// =====================================================
 
 function toSkillNames(list) {
   if (!Array.isArray(list)) return [];
@@ -98,7 +106,9 @@ function toSkillNames(list) {
     .filter(Boolean);
 }
 
-
+// =====================================================
+// HOME
+// =====================================================
 
 app.get("/", (req, res) => {
   res.json({
@@ -106,6 +116,9 @@ app.get("/", (req, res) => {
   });
 });
 
+// =====================================================
+// RESUME UPLOAD + AI ANALYSIS + PROFILE UPDATE
+// =====================================================
 
 app.post(
   "/api/resume/upload",
@@ -264,7 +277,8 @@ app.post(
         profileUpdateMessage = profileError.message;
       }
 
-      
+      // 3. Make sure analysis always has the fields that the
+      // Career Roadmap page needs.
       analysis.extractedSkills = extractedSkills;
       analysis.suggestedCareerGoal = suggestedGoal || null;
 
@@ -322,7 +336,9 @@ app.post(
   }
 );
 
-
+// =====================================================
+// SKILLS ANALYSIS
+// =====================================================
 
 app.post("/api/skills/analyze", async (req, res) => {
   try {
@@ -353,7 +369,10 @@ app.post("/api/skills/analyze", async (req, res) => {
   }
 });
 
-
+// =====================================================
+// AI MOCK INTERVIEW EVALUATION
+// Keep only ONE route for this endpoint.
+// =====================================================
 
 app.post("/api/interview/evaluate", async (req, res) => {
   try {
@@ -373,7 +392,8 @@ app.post("/api/interview/evaluate", async (req, res) => {
     }
 
     const aiResponse = await openai.responses.create({
-      
+      // Keep this model consistent with a model available
+      // to your OpenAI API account.
       model: process.env.OPENAI_MODEL || "gpt-6-luna",
 
       input: `
@@ -441,6 +461,9 @@ Rules:
   }
 });
 
+// =====================================================
+// GENERATE INTERVIEW QUESTIONS
+// =====================================================
 
 app.post(
   "/api/interview/generate-questions",
@@ -479,7 +502,9 @@ app.post(
   }
 );
 
-
+// =====================================================
+// SAVE INTERVIEW RESULT
+// =====================================================
 
 app.post("/api/interview/save", async (req, res) => {
   try {
@@ -529,7 +554,9 @@ app.post("/api/interview/save", async (req, res) => {
   }
 });
 
-
+// =====================================================
+// PYTHON SERVICE TEST
+// =====================================================
 
 app.get("/api/python-test", async (req, res) => {
   try {
@@ -546,7 +573,9 @@ app.get("/api/python-test", async (req, res) => {
   }
 });
 
-
+// =====================================================
+// DIRECT PYTHON RESUME ANALYSIS
+// =====================================================
 
 app.post("/api/python-resume-analysis", async (req, res) => {
   try {
@@ -579,6 +608,9 @@ app.post("/api/python-resume-analysis", async (req, res) => {
   }
 });
 
+// =====================================================
+// START SERVER
+// =====================================================
 
 async function startServer() {
   try {

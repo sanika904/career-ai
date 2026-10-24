@@ -27,6 +27,18 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
+// Everything the app saves in the browser after resume / skills / interview
+const CAREER_KEYS = [
+  "careerAI_resume_analysis",
+  "resumeAnalysis",
+  "careerAI_resumeText",
+  "careerAI_skillScore",
+  "careerAI_skillCount",
+  "careerAI_interviewScore",
+  "careerAI_jobMatchScore",
+  "careerAI_roadmap_progress",
+];
+
 function Dashboard() {
   const [userName, setUserName] = React.useState("");
   const [hasResume, setHasResume] = React.useState(false);
@@ -36,6 +48,18 @@ function Dashboard() {
   const [skillScore, setSkillScore] = React.useState(0);
   const [skillCount, setSkillCount] = React.useState(0);
   const [interviewScore, setInterviewScore] = React.useState(0);
+
+  // Clears old saved data and shows 0 everywhere
+  const resetCareerData = () => {
+    CAREER_KEYS.forEach((key) => localStorage.removeItem(key));
+    setHasResume(false);
+    setResumeScore(0);
+    setAtsScore(0);
+    setJobMatchScore(0);
+    setSkillScore(0);
+    setSkillCount(0);
+    setInterviewScore(0);
+  };
 
   // Logged-in user's name
   React.useEffect(() => {
@@ -58,7 +82,15 @@ function Dashboard() {
         });
 
         const data = await response.json();
-        const name = data?.user?.name || data?.name;
+        const profile = data?.user || data;
+        const name = profile?.name;
+
+        // The server saves skills only after a resume is analyzed.
+        // No skills on this account means no resume yet, so any
+        // data in this browser belongs to an old test or another user.
+        if (response.ok && !profile?.skills) {
+          resetCareerData();
+        }
 
         if (response.ok && name) {
           setUserName(name);

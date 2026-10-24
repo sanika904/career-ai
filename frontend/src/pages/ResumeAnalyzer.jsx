@@ -25,7 +25,7 @@ function ResumeAnalyzer() {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [resumeText, setResumeText] = useState("");
   const [analysis, setAnalysis] = useState(null);
-  
+
   const [error, setError] = useState("");
 
   const handleFileChange = (event) => {
@@ -77,7 +77,7 @@ function ResumeAnalyzer() {
       formData.append("resume", selectedFile);
 
       const response = await fetch(
-        "https://career-ai-z87n.onrender.com/api/resume/analyze",
+        "https://career-ai-z87n.onrender.com/api/resume/upload",
         {
           method: "POST",
           headers: {
@@ -91,9 +91,9 @@ function ResumeAnalyzer() {
 
       if (!response.ok) {
         throw new Error(
-          data.message ||
-          data.detail ||
-          `Resume analysis failed (${response.status})`
+          [data.message, data.error || data.detail]
+            .filter(Boolean)
+            .join(": ") || `Resume analysis failed (${response.status})`
         );
       }
 
@@ -102,19 +102,18 @@ function ResumeAnalyzer() {
       }
 
       setResumeText(data.text || "");
-      localStorage.setItem(
-        "careerAI_resumeText",
-        data.text || ""
-      );
+      localStorage.setItem("careerAI_resumeText", data.text || "");
 
       setAnalysis(data.analysis);
-      
-      localStorage.setItem(
-      "careerAI_resume_analysis",
-      JSON.stringify(data.analysis)
-     );
 
-     localStorage.removeItem("careerAI_roadmap_progress");
+      // Used by the Dashboard and the Career Roadmap page
+      localStorage.setItem(
+        "careerAI_resume_analysis",
+        JSON.stringify(data.analysis)
+      );
+
+      // New resume means a new roadmap, so reset old progress
+      localStorage.removeItem("careerAI_roadmap_progress");
 
       setAnalysisComplete(true);
     } catch (err) {
@@ -170,9 +169,7 @@ function ResumeAnalyzer() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-semibold">
-                    Upload Resume
-                  </h2>
+                  <h2 className="text-lg font-semibold">Upload Resume</h2>
                   <p className="text-xs text-white/40">
                     PDF format recommended
                   </p>
@@ -237,10 +234,7 @@ function ResumeAnalyzer() {
                   >
                     {isAnalyzing ? (
                       <>
-                        <LoaderCircle
-                          size={18}
-                          className="animate-spin"
-                        />
+                        <LoaderCircle size={18} className="animate-spin" />
                         Analyzing Resume...
                       </>
                     ) : (
@@ -255,10 +249,7 @@ function ResumeAnalyzer() {
 
               {error && (
                 <div className="mt-4 flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-300">
-                  <AlertCircle
-                    size={18}
-                    className="mt-0.5 shrink-0"
-                  />
+                  <AlertCircle size={18} className="mt-0.5 shrink-0" />
                   <p>{error}</p>
                 </div>
               )}
@@ -269,9 +260,7 @@ function ResumeAnalyzer() {
                 <Sparkles size={20} />
               </div>
 
-              <h2 className="text-lg font-semibold">
-                What AI analyzes
-              </h2>
+              <h2 className="text-lg font-semibold">What AI analyzes</h2>
 
               <div className="mt-5 space-y-4">
                 <InfoItem text="Resume quality and overall structure" />
@@ -402,10 +391,7 @@ function ResumeAnalyzer() {
 function InfoItem({ text }) {
   return (
     <div className="flex gap-3">
-      <CheckCircle2
-        size={18}
-        className="mt-0.5 shrink-0 text-purple-400"
-      />
+      <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-purple-400" />
       <p className="text-sm leading-5 text-white/55">{text}</p>
     </div>
   );
@@ -475,9 +461,7 @@ function InsightCard({ title, icon: Icon, iconClass, items }) {
 function Suggestion({ number, title }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-      <span className="text-xs font-semibold text-purple-400">
-        {number}
-      </span>
+      <span className="text-xs font-semibold text-purple-400">{number}</span>
       <h4 className="mt-3 text-sm font-semibold leading-5">{title}</h4>
     </div>
   );
